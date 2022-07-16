@@ -38,8 +38,8 @@ def parse_args(args):
 
     parser.add_argument('--train-mode', default='eager',help="choices=['fit','eager']")
 
-    parser.add_argument('--epochs', default=1, type=int)
-    parser.add_argument('--batch-size', default=1, type=int)
+    parser.add_argument('--epochs', default=2, type=int)
+    parser.add_argument('--batch-size', default=2, type=int)
     parser.add_argument('--start-eval-epoch', default=0, type=int)
     parser.add_argument('--eval-epoch-interval', default=1)
     #model
@@ -159,8 +159,8 @@ def generator_to_tfrecord_creator(train_generator):
             image_bytes = bytes_buffer.getvalue()
             
             image_feature = tf.train.Feature(bytes_list=tf.train.BytesList(value=[image_bytes]))
-            serialized_label0=serialize_array(batch_labels[0])
-            serialized_label1=serialize_array(batch_labels[1])
+            serialized_label0=serialize_array(batch_labels[0][0])
+            serialized_label1=serialize_array(batch_labels[1][0])
             # tf.convert_to_tensor(batch_labels[0])
             example = tf.train.Example(
             features=tf.train.Features(feature={
@@ -197,7 +197,7 @@ def generator_to_tfrecord_creator(train_generator):
 
 
         parsed_label = (parsed_label0, parsed_label1)
-        image = tf.expand_dims(image,axis=0)
+        # image = tf.expand_dims(image,axis=0)
         return image, parsed_label
 
     def load_and_extract_images(filepath):
@@ -349,8 +349,7 @@ def main(args):
 
 
             if args.optimizer.startswith('SAM'):
-                for batch_imgs, batch_labels in train_generator_tqdm:
-
+                for batch_imgs, batch_labels in train_generator_tqdm.batch(args.batch_size):
                     batch_index=0
                     with tf.GradientTape() as tape:
                         model_outputs = model(batch_imgs, training=True)
@@ -389,7 +388,7 @@ def main(args):
                         ema.apply(model.trainable_variables)
             else:
 
-                for batch_index, (batch_imgs, batch_labels)  in train_generator_tqdm:
+                for batch_index, (batch_imgs, batch_labels)  in train_generator_tqdm.batch(2):
                     with tf.GradientTape() as tape:
                         model_outputs = model(batch_imgs, training=True)
                         data_loss = 0
